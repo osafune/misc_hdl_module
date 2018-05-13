@@ -7,9 +7,9 @@ MISCモジュール集
 |---|---|---|
 |div_module.vhd|[div_module](#div_module)|符号無し整数同士の除算モジュール|
 |delay_module.vhd|[delay_module](#delay_module)|任意幅・任意長のデータ遅延モジュール|
-|cdb_module.vhd|[cdb_signal_module](#cdb_signal_module)|レベル信号の単方向クロックドメインブリッジ|
-||[cdb_stream_module](#cdb_stream_module)|トリガ信号のハンドシェーク・クロックドメインブリッジ|
-||[cdb_data_module](#cdb_data_module)|任意幅のデータのハンドシェーク・クロックドメインブリッジ|
+|cdb_module.vhd|[cdb_signal_module](#cdb_signal_module-固有ポート)|レベル信号の単方向クロックドメインブリッジ|
+||[cdb_stream_module](#cdb_stream_module-固有ポート)|トリガ信号のハンドシェーク・クロックドメインブリッジ|
+||[cdb_data_module](#cdb_data_module-固有ポート)|任意幅のデータのハンドシェーク・クロックドメインブリッジ|
 |vga_syncgen.vhd|[vga_syncgen](#vga_syncgen)|ビデオ信号およびカラーバー信号生成モジュール|
 
 
