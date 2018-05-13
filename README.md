@@ -1,7 +1,16 @@
-MISCモジュール
-=============
+MISCモジュール集
+===============
 
 たまに必要なる機能のHDLモジュール集です。
+
+|ファイル|エンティティ名|説明|
+|---|---|---|
+|div_module.vhd|[div_module](#div_module)|符号無し整数同士の除算モジュール|
+|delay_module.vhd|[delay_module](#delay_module)|任意幅・任意長のデータ遅延モジュール|
+|cdb_module.vhd|[cdb_signal_module](#cdb_signal_module)|レベル信号の単方向クロックドメインブリッジ|
+||[cdb_stream_module](#cdb_stream_module)|トリガ信号のハンドシェーク・クロックドメインブリッジ|
+||[cdb_data_module](#cdb_data_module)|任意幅のデータのハンドシェーク・クロックドメインブリッジ|
+|vga_syncgen.vhd|[vga_syncgen](#vga_syncgen)|ビデオ信号およびカラーバー信号生成モジュール|
 
 
 ライセンス
@@ -84,7 +93,7 @@ cdb_module
 
 cdb_signal_module 固有ポート
 ---------------------------
-- cdb_signal_moduleは共通ポートに加えて下記の固有ポートを持ちます。
+- cdb_signal_moduleは[共通ポート](#共通ポート)に加えて下記の固有ポートを持ちます。
 
 |port|型|入出力|説明|
 |---|---|---|---|
@@ -95,7 +104,7 @@ cdb_signal_module 固有ポート
 
 cdb_stream_module 固有ポート
 ---------------------------
-- cdb_stream_moduleは共通ポートに加えて下記の固有ポートを持ちます。
+- cdb_stream_moduleは[共通ポート](#共通ポート)に加えて下記の固有ポートを持ちます。
 
 |port|型|入出力|説明|
 |---|---|---|---|
@@ -106,7 +115,7 @@ cdb_stream_module 固有ポート
 
 cdb_data_module 固有ポート
 --------------------------
-- cdb_data_moduleは共通ポートおよびcdb_stream_module固有ポートに加えて下記の固有ポートを持ちます。
+- cdb_data_moduleは[共通ポート](#共通ポート)および[cdb_stream_module固有ポート](#cdb_stream_module)に加えて下記の固有ポートを持ちます。
 
 |generic|型|パラメータ|説明|
 |---|---|---|---|
@@ -117,4 +126,41 @@ cdb_data_module 固有ポート
 |in_data|std_logic_vector|input|in_validに'1'が指示された場合にin_readyが'1'であればデータが取り込まれます。|
 |out_data|std_logic_vector|output|out_validが'1'の時に取り込まれたデータが有効になります。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
 
+
+-------------------------------------------------------------------------------
+vga_syncgen
+-----------
+- 任意のビデオ信号およびカラーバー信号を生成するモジュールです。カラーバーはビデオ信号期間に合わせて自動的にスケーリングされます。
+
+|generic|型|パラメータ|説明|
+|---|---|---|---|
+|H_TOTAL|integer|16～65535|水平方向のドット数を指定します。|
+|H_SYNC|integer|8～H_TOTAL|水平同期信号のドット幅を指定します。|
+|H_BACKP|integer|0～H_TOTAL|水平バックポーチ（水平同期終了から表示開始までの期間）のドット数を指定します。|
+|H_ACTIVE|integer|8～H_TOTAL|水平表示期間のドット数を指定します。有効なカラーバーを出力するためには32ドット以上必要です。|
+|V_TOTAL|integer|8～65535|垂直方向のライン数を指定します。|
+|V_SYNC|integer|1～V_TOTAL|垂直同期信号のライン数を指定します。|
+|V_BACKP|integer|0～V_TOTAL|垂直バックポーチ（垂直同期終了から表示開始までの期間）のライン数を指定します。|
+|V_ACTIVE|integer|8～V_TOTAL|垂直表示期間のライン数を指定します。有効なカラーバーを出力するためには16ライン以上必要です。|
+
+※パラメータは下記の条件を満たさなければなりません。  
+  - H_TOTAL ＞ H_SYNC + H_BACKP + H_ACTIVE
+  - V_TOTAL ＞ V_SYNC + V_BACKP + V_ACTIVE
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|video_clk|std_logic|input|ビデオクロック（ドットクロック）入力です。全ての信号は立ち上がりエッジで動作します。|
+|scan_ena|std_logic|input|フレームバッファ走査イネーブル入力です。フレーム開始時にサンプルされ、'1'がセットされている場合はフレームバッファ制御用の信号を出力します。|
+|framestart|std_logic|output|フレームの先頭でHSYNC期間の間'1'を出力します。|
+|linestart|std_logic|output|scan_enaがアサートされていた場合、映像出力が有効なラインの先頭でHSYNC期間の間'1'を出力します。|
+|pixelena|std_logic|output|scan_enaがアサートされていた場合、表示領域のドットの時に'1'を出力します。|
+|hsync|std_logic|output|水平同期期間に'1'を出力します。|
+|vsync|std_logic|output|垂直同期期間に'1'を出力します。|
+|hblank|std_logic|output|水平ブランク期間に'1'を出力します。|
+|vblank|std_logic|output|垂直ブランク期間に'1'を出力します。|
+|dotenable|std_logic|output|ドットイネーブル期間に'1'を出力します。|
+|cb_rout|std_logic_vector|output|カラーバーのR信号を8bitで出力します。|
+|cb_gout|std_logic_vector|output|カラーバーのG信号を8bitで出力します。|
+|cb_bout|std_logic_vector|output|カラーバーのB信号を8bitで出力します。|
 
