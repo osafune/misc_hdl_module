@@ -11,6 +11,7 @@ MISCモジュール集
 ||[cdb_stream_module](#cdb_stream_module-固有ポート)|トリガ信号のハンドシェーク・クロックドメインブリッジ|
 ||[cdb_data_module](#cdb_data_module-固有ポート)|任意幅のデータのハンドシェーク・クロックドメインブリッジ|
 |vga_syncgen.vhd|[vga_syncgen](#vga_syncgen)|ビデオ信号およびカラーバー信号生成モジュール|
+|dvi_encoder.vhd|[dvi_encoder](#dvi_encoder)|ビデオ信号をDVI/HDMI信号にエンコードする|
 
 
 ライセンス
@@ -115,7 +116,7 @@ cdb_stream_module 固有ポート
 
 cdb_data_module 固有ポート
 --------------------------
-- cdb_data_moduleは[共通ポート](#共通ポート)および[cdb_stream_module固有ポート](#cdb_stream_module)に加えて下記の固有ポートを持ちます。
+- cdb_data_moduleは[共通ポート](#共通ポート)および[cdb_stream_module固有ポート](#cdb_stream_module-固有ポート)に加えて下記の固有ポートを持ちます。
 
 |generic|型|パラメータ|説明|
 |---|---|---|---|
@@ -163,4 +164,40 @@ vga_syncgen
 |cb_rout|std_logic_vector|output|カラーバーのR信号を8bitで出力します。|
 |cb_gout|std_logic_vector|output|カラーバーのG信号を8bitで出力します。|
 |cb_bout|std_logic_vector|output|カラーバーのB信号を8bitで出力します。|
+
+
+-------------------------------------------------------------------------------
+dvi_encoder
+-----------
+- ビデオ信号（RGB 4:4:4/8bit）をDVI/HDMI信号にエンコードするモジュールです。信号はDVIフォーマットのみでHDMIで追加された機能（オーディオパケットなど）は対応していません。
+- このモジュールは信号のエンコードのみを行います。DVI/HDMI信号への電気的な変換は外部回路で行う必要があります。
+
+|generic|型|パラメータ|説明|
+|---|---|---|---|
+|DEVICE_FAMILY|string|"Cyclone III" or "Cyclone IV E" or "Cyclone V" or "MAX 10"|実装するデバイスファミリを指定します。|
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|clk|std_logic|input|ドットクロックを入力です。全ての信号は立ち上がりエッジで動作します。|
+|clk_x5|std_logic|input|シリアライズクロック入力です。clkポートのクロックと同相(0 deg)の5倍の周波数のクロックを入力します。|
+|vga_r|std_logic_vector|input|8bitのビデオR信号入力です。|
+|vga_g|std_logic_vector|input|8bitのビデオG信号入力です。|
+|vga_b|std_logic_vector|input|8bitのビデオB信号入力です。|
+|vga_de|std_logic|input|ドットイネーブル信号入力です。'1'の場合にvga_r,vga_g,vga_bのデータが取り込まれます。|
+|vga_hsync|std_logic|input|水平同期信号入力です。'1'の場合に同期期間となります。|
+|vga_vsync|std_logic|input|垂直同期信号入力です。'1'の場合に同期期間となります。||
+|data0_p|std_logic|output|DVI/HDMIのDATA0p信号出力です。|
+|data0_n|std_logic|output|DVI/HDMIのDATA0n信号出力です。|
+|data1_p|std_logic|output|DVI/HDMIのDATA1p信号出力です。|
+|data1_n|std_logic|output|DVI/HDMIのDATA1n信号出力です。|
+|data2_p|std_logic|output|DVI/HDMIのDATA2p信号出力です。|
+|data2_n|std_logic|output|DVI/HDMIのDATA2n信号出力です。|
+|clock_p|std_logic|output|DVI/HDMIのCLOCKp信号出力です。|
+|clock_n|std_logic|output|DVI/HDMIのCLOCKn信号出力です。|
+
+**※ピン設定について**
+- _p/_nのピンは差動信号で動作するため、隣接あるいはLVDSペアのピンに配置してください。
+- VREFピン等の高速信号に対応していないピンへ配置しないよう注意してください。
+- 必要に応じてピンI/O規格の設定および外部回路にて電気特性を調整してください。
 
