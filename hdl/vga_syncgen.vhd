@@ -56,6 +56,15 @@ entity vga_syncgen is
 --		V_SYNC		: integer := 3;
 --		V_BACKP		: integer := 0;
 --		V_ACTIVE	: integer := 272
+
+--		H_TOTAL		: integer := 953;	-- RasPi 5inch HDMI Display(800x480) / 30.0MHz
+--		H_SYNC		: integer := 48;
+--		H_BACKP		: integer := 40;
+--		H_ACTIVE	: integer := 800;
+--		V_TOTAL		: integer := 525;
+--		V_SYNC		: integer := 3;
+--		V_BACKP		: integer := 29;
+--		V_ACTIVE	: integer := 480
 	);
 	port (
 		reset		: in  std_logic;		-- active high
@@ -89,7 +98,6 @@ architecture RTL of vga_syncgen is
 	signal vsync_reg	: std_logic;
 	signal hblank_reg	: std_logic;
 	signal vblank_reg	: std_logic;
-	signal dither_reg	: std_logic;
 
 
 	constant CB_LEFTBAND	: integer := H_SYNC + H_BACKP + H_ACTIVE/8 - 1;
