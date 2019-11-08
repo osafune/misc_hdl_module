@@ -7,11 +7,12 @@
 --     UPDATE : 2012/02/21 add pixelena signal(for ATM0430D5)
 --            : 2013/07/29 add colorbar generator
 --            : 2018/05/13 delete dither
+--            : 2019/11/08 delete dither (bugfix)
 --
 -- ===================================================================
 
 -- The MIT License (MIT)
--- Copyright (c) 2010-2018 J-7SYSTEM WORKS LIMITED.
+-- Copyright (c) 2010-2019 J-7SYSTEM WORKS LIMITED.
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy of
 -- this software and associated documentation files (the "Software"), to deal in
@@ -157,7 +158,6 @@ begin
 			vsync_reg   <= '0';
 			hblank_reg  <= '1';
 			vblank_reg  <= '1';
-			dither_reg  <= '0';
 
 		elsif(video_clk'event and video_clk='1') then
 			scan_in_reg <= scan_ena;
