@@ -1,15 +1,17 @@
 -- ===================================================================
 -- TITLE : S/PDIF Encoder
 --
---     DESIGN : S.OSAFUNE (J-7SYSTEM WORKS LIMITED)
+--     DESIGN : s.osafune@j7system.jp (J-7SYSTEM WORKS LIMITED)
 --     DATE   : 2005/09/26 -> 2005/09/30
 --
 --     UPDATE : 2016/10/05
+--            : 2019/08/12 ライセンスアップデート
+--            : 2020/02/04 192kHz/24bit化対応 
 --
 -- ===================================================================
-
+--
 -- The MIT License (MIT)
--- Copyright (c) 2005 J-7SYSTEM WORKS LIMITED.
+-- Copyright (c) 2005-2020 J-7SYSTEM WORKS LIMITED.
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy of
 -- this software and associated documentation files (the "Software"), to deal in
@@ -35,7 +37,13 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 use IEEE.std_logic_arith.all;
 
-entity spdif_encoder is
+entity spdif_tx_24bit is
+	generic(
+		COPYRIGHTS		: string := "ENABLE";		-- "ENALBE", "NONE"
+		CLOCK_ACCURACY	: string := "STANDARD";		-- "STANDARD", "VARIABLE", "HIQUALITY"
+		COPY_CONTROL	: string := "NONE";			-- "NONE", "ONCE", "LIMIT"
+		CATEGORY_CODE	: std_logic_vector(7 downto 0) := "00000000"	-- source category code
+	);
 	port(
 		reset		: in  std_logic;
 		clk			: in  std_logic;
@@ -43,23 +51,35 @@ entity spdif_encoder is
 		first_frame	: out std_logic;
 		end_frame	: out std_logic;
 
-		pcmdata_l	: in  std_logic_vector(19 downto 0);
-		pcmdata_r	: in  std_logic_vector(19 downto 0);
-
-		empha_ena	: in  std_logic := '0';
-		copy_ena	: in  std_logic := '1';
-		copy_gen	: in  std_logic := '0';
-		freq_code	: in  std_logic_vector(1 downto 0) := "00";	-- 00:44.1kHz / 10:48kHz / 11:32kHz
+		freq_code	: in  std_logic_vector(3 downto 0) := "0000";
+						-- 0000 : 44.1kHz
+						-- 0010 : 48kHz
+						-- 0011 : 32kHz
+						-- 1000 : 88.2kHz
+						-- 1010 : 96kHz
+						-- 1100 : 176.4kHz
+						-- 1110 : 192kHz
+		dlen_code	: in  std_logic_vector(3 downto 0) := "0000";
+						-- 0000 : none
+						-- 0010 : 16bit
+						-- 1010 : 20bit
+						-- 1011 : 24bit
+		pcmdata_l	: in  std_logic_vector(23 downto 0);
+		pcmdata_r	: in  std_logic_vector(23 downto 0);
 
 		spdif_out	: out std_logic
 	);
-end spdif_encoder;
+end spdif_tx_24bit;
 
-architecture RTL of spdif_encoder is
+architecture RTL of spdif_tx_24bit is
 	constant FRAME_MAX		: integer := 192-1;
 	constant SUBFRAME_MAX	: integer := 2-1;
 	constant PCM_L_SUBFRAME	: integer := 0;
 	constant PCM_R_SUBFRAME	: integer := 1;
+
+	constant B_PREAMBLE		: std_logic_vector(2 downto 0) := "001";
+	constant M_PREAMBLE		: std_logic_vector(2 downto 0) := "100";
+	constant W_PREAMBLE		: std_logic_vector(2 downto 0) := "010";
 
 	constant CATEGORY_GENERAL		: std_logic_vector(7 downto 0) := "00000000";
 	constant CATEGORY_CD			: std_logic_vector(7 downto 0) := "00000001";
@@ -83,25 +103,21 @@ architecture RTL of spdif_encoder is
 	constant CATEGORY_MEMORY		: std_logic_vector(7 downto 0) := "10001000";
 	constant CATEGORY_TEST			: std_logic_vector(7 downto 0) := "11000000";
 
-	constant CHANNEL_L				: std_logic_vector(3 downto 0) := "0001";
-	constant CHANNEL_R				: std_logic_vector(3 downto 0) := "0010";
-
-	constant CLKACCURACY_LEVEL2		: std_logic_vector(1 downto 0) := "00";
-	constant CLKACCURACY_LEVEL3		: std_logic_vector(1 downto 0) := "10";
-	constant CLKACCURACY_LEVEL1		: std_logic_vector(1 downto 0) := "01";
-
-	constant B_PREAMBLE		: std_logic_vector(2 downto 0) := "001";
-	constant M_PREAMBLE		: std_logic_vector(2 downto 0) := "100";
-	constant W_PREAMBLE		: std_logic_vector(2 downto 0) := "010";
 
 	signal frame_num		: integer range 0 to FRAME_MAX;
 	signal subframe_num		: integer range 0 to SUBFRAME_MAX;
 	signal amblecode_sig	: std_logic_vector(2 downto 0);
-	signal pcmdata_sig		: std_logic_vector(19 downto 0);
-	signal statbit_sig		: std_logic_vector(FRAME_MAX downto 0);
-	signal userbit_sig		: std_logic_vector(FRAME_MAX downto 0);
+	signal pcmdata_sig		: std_logic_vector(23 downto 0);
 
-	component spdif_subframe_enc
+	signal copyrights_sig	: std_logic;
+	signal channelno_sig	: std_logic_vector(3 downto 0);
+	signal clkaccur_sig		: std_logic_vector(1 downto 0);
+	signal copycontrol_sig	: std_logic_vector(1 downto 0);
+	signal statbit_sig		: std_logic_vector(FRAME_MAX downto 0);
+	signal status_bit_sig	: std_logic;
+
+
+	component spdif_tx_subframe_enc
 	port(
 		reset		: in  std_logic;
 		clk			: in  std_logic;
@@ -120,10 +136,10 @@ architecture RTL of spdif_encoder is
 	);
 	end component;
 	signal frame_end_sig	: std_logic;
-	signal status_bit_sig	: std_logic;
-	signal user_bit_sig		: std_logic;
 
 begin
+
+	-- タイミング信号の生成 
 
 	process(clk, reset)begin
 		if (reset = '1') then
@@ -131,7 +147,7 @@ begin
 			subframe_num <= 0;
 
 		elsif rising_edge(clk) then
-			if (clk_ena='1' and frame_end_sig='1') then
+			if (clk_ena = '1' and frame_end_sig = '1') then
 
 				if (subframe_num /= SUBFRAME_MAX) then	-- subframeが最大かどうか 
 					subframe_num <= subframe_num + 1;
@@ -151,45 +167,73 @@ begin
 	first_frame <= '1' when(subframe_num = 0) else '0';
 	end_frame   <= '1' when(subframe_num = SUBFRAME_MAX) else '0';
 
+
+	-- プリアンブルシンボルの設定 
+
 	amblecode_sig <= B_PREAMBLE when(frame_num = 0 and subframe_num = 0) else
 					 M_PREAMBLE when(frame_num /= 0 and subframe_num = 0) else
 					 W_PREAMBLE;
+
+
+	-- オーディオデータの設定 
 
 	pcmdata_sig <= 	pcmdata_l when(subframe_num = PCM_L_SUBFRAME) else
 					pcmdata_r when(subframe_num = PCM_R_SUBFRAME) else
 					(others=>'X');
 
+
+	-- ステータスビットの設定 
+
+	copyrights_sig <= '0' when(COPYRIGHTS = "ENABLE") else '1';
+
+	clkaccur_sig <=
+			"01" when(CLOCK_ACCURACY = "HIQUALITY") else
+			"10" when(CLOCK_ACCURACY = "VARIABLE") else
+			"00";
+
+	channelno_sig <=
+			"0001" when(subframe_num = PCM_L_SUBFRAME) else
+			"0010" when(subframe_num = PCM_R_SUBFRAME) else
+			"0000";
+
+	copycontrol_sig <=
+			"01" when(COPY_CONTROL = "ONCE") else
+			"11" when(COPY_CONTROL = "LIMIT") else
+			"00";
+
 	statbit_sig(0) <= '0';							-- 民生用コード 
 	statbit_sig(1) <= '0';							-- オーディオデータ 
-	statbit_sig(2) <= copy_ena;						-- 著作権情報設定 
-	statbit_sig(4 downto 3) <= '0' & empha_ena;		-- エンファシス設定 
+	statbit_sig(2) <= copyrights_sig;				-- 著作権情報設定 
+	statbit_sig(4 downto 3) <= "00";				-- エンファシス設定 
 	statbit_sig(5) <= '0';							-- ２チャネルオーディオ 
 	statbit_sig(7 downto 6) <= "00";				-- モード０ 
-	statbit_sig(15 downto 8) <= CATEGORY_GENERAL	-- 機器カテゴリ設定 
-						xor(copy_gen & "0000000");	-- ソース世代設定 
+	statbit_sig(15 downto 8) <= CATEGORY_CODE;		-- 機器カテゴリ設定 
 	statbit_sig(19 downto 16) <= "0000";			-- ソース番号０ 
-	statbit_sig(23 downto 20) <= "0000";			-- チャネル番号指定 
-	statbit_sig(27 downto 24) <= "00" & freq_code;	-- サンプリング周波数設定 
-	statbit_sig(29 downto 28) <= CLKACCURACY_LEVEL2;	-- クロック精度設定 
-
-	statbit_sig(FRAME_MAX downto 30) <= (others=>'0');	-- 予約 
-
-	userbit_sig <= (others=>'0');					-- ユーザービット 
+	statbit_sig(23 downto 20) <= channelno_sig;		-- チャネル番号指定 
+	statbit_sig(27 downto 24) <= freq_code;			-- サンプリング周波数設定 
+	statbit_sig(29 downto 28) <= clkaccur_sig;		-- クロック精度設定 
+	statbit_sig(31 downto 30) <= "00";				-- 予約 
+	statbit_sig(35 downto 32) <= dlen_code;			-- 有効データ長 
+	statbit_sig(39 downto 36) <= "0000";			-- オリジナルサンプリング周波数（指定無し） 
+	statbit_sig(41 downto 40) <= copycontrol_sig;	-- コピー制限設定 
+	statbit_sig(FRAME_MAX downto 42) <= (others=>'0');	-- 予約 
 
 	status_bit_sig <= statbit_sig(frame_num);
-	user_bit_sig   <= userbit_sig(frame_num);
 
-	U : spdif_subframe_enc
+
+	-- サブフレームエンコーダ 
+
+	U : spdif_tx_subframe_enc
 		port map(
 			reset		=> reset,
 			clk			=> clk,
 			clk_ena		=> clk_ena,
 			frame_end	=> frame_end_sig,
 			amble_code	=> amblecode_sig,
-			aux_code	=> "0000",
-			sample_code	=> pcmdata_sig,
+			aux_code	=> pcmdata_sig(3 downto 0),
+			sample_code	=> pcmdata_sig(23 downto 4),
 			valid_bit	=> '0',
-			user_bit	=> user_bit_sig,
+			user_bit	=> '0',
 			status_bit	=> status_bit_sig,
 			spdif_out	=> spdif_out
 		);
@@ -208,7 +252,7 @@ use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 use IEEE.std_logic_arith.all;
 
-entity spdif_subframe_enc is
+entity spdif_tx_subframe_enc is
 	port(
 		reset		: in  std_logic;
 		clk			: in  std_logic;
@@ -225,9 +269,9 @@ entity spdif_subframe_enc is
 
 		spdif_out	: out std_logic
 	);
-end spdif_subframe_enc;
+end spdif_tx_subframe_enc;
 
-architecture RTL of spdif_subframe_enc is
+architecture RTL of spdif_tx_subframe_enc is
 	signal slot_counter	: std_logic_vector(5 downto 0);
 
 	signal amblebit_sig	: std_logic_vector(7 downto 0);
