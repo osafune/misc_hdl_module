@@ -12,7 +12,8 @@ MISCモジュール集
 ||[cdb_data_module](#cdb_data_module-固有ポート)|任意幅のデータのハンドシェーク・クロックドメインブリッジ|
 |vga_syncgen.vhd|[vga_syncgen](#vga_syncgen)|ビデオ信号およびカラーバー信号生成モジュール|
 |dvi_encoder.vhd|[dvi_encoder](#dvi_encoder)|ビデオ信号をDVI/HDMI信号にエンコードする|
-
+|uart_module.v|[uart_phy_rxd](#uart_phy_rxd)|UARTを受信してAvalonST バイトデータとして出力する|
+||[uart_phy_txd](#uart_phy_txd)|AvalonST バイトデータをUARTで送信する|
 
 ライセンス
 =========
@@ -201,3 +202,47 @@ dvi_encoder
 - VREFピン等の高速信号に対応していないピンへ配置しないよう注意してください。
 - 必要に応じてピンI/O規格の設定および外部回路にて電気特性を調整してください。
 
+
+-------------------------------------------------------------------------------
+uart_phy_rxd
+------------
+
+- UARTのデータを受信してAvalonSTバイトストリームへ変換します。
+
+|generic|型|パラメータ|説明|
+|---|---|---|---|
+|CLOCK_FREQUENCY|integer|50000000(デフォルト)|clkポートに入力するクロック周波数を指定します。|
+|UART_BAUDRATE|integer|115200(デフォルト)|受信するUARTのボーレートを指定します。|
+|UART_STOPBIT|integer|1(デフォルト) or 2|UARTのストップビット長を指定します。|
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|clk|std_logic|input|クロックを入力です。全ての信号は立ち上がりエッジで動作します。|
+|out_ready|std_logic|input|AvalonSTシンク側からの待機を指示します。out_readyが'0'の間はout_validのアサート状態を保持します。|
+|out_valid|std_logic|output|受信したバイトデータの有効信号が出力されます。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
+|out_data|std_logic_vector|output|受信した8bitのバイトデータが出力されます。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
+|out_error|std_logic_vector|output|受信エラーのステータスを指示します。<br>bit 0:オーバーフローエラー発生のとき'1'を指示します。out_dataのリードが行われると'0'にクリアされます。<br>bit 1:フレーミングエラー発生のとき'1'を指示します。次のデータが正常に受信されると'0'にクリアされます。|
+|rxd|std_logic|input|UARTの信号入力です。|
+
+
+-------------------------------------------------------------------------------
+uart_phy_txd
+------------
+
+- AvalonSTバイトストリームからUARTのデータを送信します。
+
+|generic|型|パラメータ|説明|
+|---|---|---|---|
+|CLOCK_FREQUENCY|integer|50000000(デフォルト)|clkポートに入力するクロック周波数を指定します。|
+|UART_BAUDRATE|integer|115200(デフォルト)|送信するUARTのボーレートを指定します。|
+|UART_STOPBIT|integer|1(デフォルト) or 2|UARTのストップビット長を指定します。|
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|clk|std_logic|input|クロックを入力です。全ての信号は立ち上がりエッジで動作します。|
+|in_ready|std_logic|output|モジュールの状態を返します。in_readyが'0'の時にin_validをアサートした場合は、in_readyが'1'になるまで入力の状態を保持しなければなりません。|
+|in_valid|std_logic|input|バイトデータ入力信号です。in_readyが'0'の時にin_validをアサートした場合は、in_readyが'1'になるまで入力の状態を保持しなければなりません。|
+|in_data|std_logic_vector|input|in_validに'1'が指示された場合にin_readyが'1'であれば8bitのバイトデータが取り込まれ、UART送信されます。|
+|txd|std_logic|output|UARTの信号出力です。|
