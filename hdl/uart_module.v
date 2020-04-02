@@ -4,7 +4,7 @@
 //     DESIGN : s.osafune@j7system.jp (J-7SYSTEM WORKS LIMITED)
 //     DATE   : 2015/12/27 -> 2015/12/27
 //
-//     UPDATE : 2020/03/31 module update
+//     UPDATE : 2020/04/02 module update
 //
 // ===================================================================
 //
@@ -39,7 +39,7 @@
 
 module uart_phy_txd #(
 	parameter CLOCK_FREQUENCY	= 50000000,
-	parameter UART_BITRATE		= 115200,
+	parameter UART_BAUDRATE		= 115200,
 	parameter UART_STOPBIT		= 1
 ) (
 	// Interface: clk
@@ -62,8 +62,8 @@ module uart_phy_txd #(
 
 /* ----- 内部パラメータ ------------------ */
 
-	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BITRATE) - 1;
-	localparam INIT_BITCOUNT = (UART_STOPBIT == 2)? 11 : 10;
+	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BAUDRATE) - 1;
+	localparam INIT_BITCOUNT = (UART_STOPBIT > 1)? 11 : 10;
 
 
 /* ※以降のパラメータ宣言は禁止※ */
@@ -130,7 +130,7 @@ endmodule
 
 module uart_phy_rxd #(
 	parameter CLOCK_FREQUENCY	= 50000000,
-	parameter UART_BITRATE		= 115200,
+	parameter UART_BAUDRATE		= 115200,
 	parameter UART_STOPBIT		= 1
 ) (
 	// Interface: clk
@@ -154,7 +154,7 @@ module uart_phy_rxd #(
 
 /* ----- 内部パラメータ ------------------ */
 
-	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BITRATE) - 1;
+	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BAUDRATE) - 1;
 	localparam BIT_CAPTURE  = (CLOCK_DIVNUM / 2);
 
 
