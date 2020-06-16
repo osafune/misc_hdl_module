@@ -49,6 +49,15 @@ entity vga_syncgen is
 		V_BACKP		: integer := 33;
 		V_ACTIVE	: integer := 480
 
+--		H_TOTAL		: integer := 1650;	-- HD720p(1280x720) / 74.25MHz
+--		H_SYNC		: integer := 40;
+--		H_BACKP		: integer := 260;
+--		H_ACTIVE	: integer := 1280;
+--		V_TOTAL		: integer := 750;
+--		V_SYNC		: integer := 5;
+--		V_BACKP		: integer := 20;
+--		V_ACTIVE	: integer := 720
+
 --		H_TOTAL		: integer := 525;	-- ATM0430D5(480x272) / 9.0MHz
 --		H_SYNC		: integer := 40;
 --		H_BACKP		: integer := 0;
