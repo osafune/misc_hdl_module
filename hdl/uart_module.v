@@ -4,8 +4,8 @@
 //     DESIGN : s.osafune@j7system.jp (J-7SYSTEM WORKS LIMITED)
 //     DATE   : 2015/12/27 -> 2015/12/27
 //
-//     UPDATE : 2020/04/02 module update
-//
+//     UPDATE : 2020/04/02 module update (osafune@j7system.jp)
+//              2021/01/04 add RTS/CTS (osafune@j7system.jp)
 // ===================================================================
 //
 // The MIT License (MIT)
@@ -52,7 +52,8 @@ module uart_phy_txd #(
 	input wire  [7:0]	in_data,
 
 	// interface UART
-	output wire			txd
+	output wire			txd,
+	input wire			cts
 );
 
 
@@ -78,6 +79,7 @@ module uart_phy_txd #(
 	reg [11:0]		divcount_reg;
 	reg [3:0]		bitcount_reg;
 	reg [8:0]		txd_reg;
+	reg [1:0]		ctsin_reg;
 
 
 /* ※以降のwire、reg宣言は禁止※ */
@@ -88,7 +90,7 @@ module uart_phy_txd #(
 
 /* ===== モジュール構造記述 ============== */
 
-	assign in_ready = (bitcount_reg == 4'd0)? 1'b1 : 1'b0;
+	assign in_ready = (bitcount_reg == 4'd0)? ctsin_reg[1] : 1'b0;
 	assign txd = txd_reg[0];
 
 	always @(posedge clock_sig or posedge reset_sig) begin
@@ -96,11 +98,14 @@ module uart_phy_txd #(
 			divcount_reg <= 1'd0;
 			bitcount_reg <= 1'd0;
 			txd_reg <= 9'h1ff;
+			ctsin_reg <= 2'b00;
 
 		end
 		else begin
+			ctsin_reg <= {ctsin_reg[0], cts};
+
 			if (bitcount_reg == 4'd0) begin
-				if (in_valid) begin
+				if (in_valid && ctsin_reg[1]) begin
 					divcount_reg <= CLOCK_DIVNUM[11:0];
 					bitcount_reg <= INIT_BITCOUNT[3:0];
 					txd_reg <= {in_data, 1'b0};
@@ -144,7 +149,8 @@ module uart_phy_rxd #(
 	output wire [1:0]	out_error,		// [0]:overflow, [1]:framing
 
 	// interface UART
-	input wire			rxd
+	input wire			rxd,
+	output wire			rts
 );
 
 
@@ -168,6 +174,7 @@ module uart_phy_rxd #(
 	wire			clock_sig = clk;				// モジュール内部駆動クロック 
 
 	reg [2:0]		rxdin_reg;
+	reg				rts_reg;
 
 	reg [11:0]		divcount_reg;
 	reg [3:0]		bitcount_reg;
@@ -196,10 +203,12 @@ module uart_phy_rxd #(
 			outdata_reg  <= 8'h00;
 			overflow_reg <= 1'b0;
 			stoperror_reg <= 1'b0;
+			rts_reg <= 1'b0;
 
 		end
 		else begin
 			rxdin_reg <= {rxdin_reg[1:0], rxd};
+			rts_reg <= (!out_ready && outvalid_reg)? 1'b0 : 1'b1;
 
 			if (out_ready && outvalid_reg) begin
 				overflow_reg <= 1'b0;
@@ -254,6 +263,7 @@ module uart_phy_rxd #(
 		end
 	end
 
+	assign rts = rts_reg;
 	assign out_valid = outvalid_reg;
 	assign out_data  = outdata_reg;
 	assign out_error = {stoperror_reg, overflow_reg};

@@ -224,6 +224,7 @@ uart_phy_rxd
 |out_data|std_logic_vector|output|受信した8bitのバイトデータが出力されます。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
 |out_error|std_logic_vector|output|受信エラーのステータスを指示します。<br>bit 0:オーバーフローエラー発生のとき'1'を指示します。out_dataのリードが行われると'0'にクリアされます。<br>bit 1:フレーミングエラー発生のとき'1'を指示します。次のデータが正常に受信されると'0'にクリアされます。|
 |rxd|std_logic|input|UARTの信号入力です。|
+|rts|std_logic|output|フロー制御の送信リクエスト信号です。受信可能なとき'1'を指示します。|
 
 
 -------------------------------------------------------------------------------
@@ -246,3 +247,4 @@ uart_phy_txd
 |in_valid|std_logic|input|バイトデータ入力信号です。in_readyが'0'の時にin_validをアサートした場合は、in_readyが'1'になるまで入力の状態を保持しなければなりません。|
 |in_data|std_logic_vector|input|in_validに'1'が指示された場合にin_readyが'1'であれば8bitのバイトデータが取り込まれ、UART送信されます。|
 |txd|std_logic|output|UARTの信号出力です。|
+|cts|std_logic|input|フロー制御の通信可入力です。'1'のときにUART送信を実行します。フロー制御を使用しない場合は'1'に固定します。|
