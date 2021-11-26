@@ -195,7 +195,8 @@ begin
 			end if;
 
 
-			if (hcount = H_SYNC + H_BACKP + H_ACTIVE-1) then
+--			if (hcount = H_SYNC + H_BACKP + H_ACTIVE-1) then
+			if (hcount = H_TOTAL-1) then
 				if (vcount = V_TOTAL-1) then
 					vcount <= 0;
 				else
