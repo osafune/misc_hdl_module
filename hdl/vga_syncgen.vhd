@@ -8,11 +8,12 @@
 --            : 2013/07/29 add colorbar generator
 --            : 2018/05/13 delete dither
 --            : 2019/11/08 delete dither (bugfix)
+--            : 2022/01/27 add csync signal
 --
 -- ===================================================================
 
 -- The MIT License (MIT)
--- Copyright (c) 2010-2019 J-7SYSTEM WORKS LIMITED.
+-- Copyright (c) 2010-2022 J-7SYSTEM WORKS LIMITED.
 --
 -- Permission is hereby granted, free of charge, to any person obtaining a copy of
 -- this software and associated documentation files (the "Software"), to deal in
@@ -87,6 +88,7 @@ entity vga_syncgen is
 
 		hsync		: out std_logic;
 		vsync		: out std_logic;
+		csync		: out std_logic;
 		hblank		: out std_logic;
 		vblank		: out std_logic;
 		dotenable	: out std_logic;
@@ -106,6 +108,7 @@ architecture RTL of vga_syncgen is
 	signal line_reg		: std_logic;
 	signal hsync_reg	: std_logic;
 	signal vsync_reg	: std_logic;
+	signal csync_reg	: std_logic;
 	signal hblank_reg	: std_logic;
 	signal vblank_reg	: std_logic;
 
@@ -150,6 +153,7 @@ begin
 
 	hsync  <= hsync_reg;
 	vsync  <= vsync_reg;
+	csync  <= csync_reg;
 	hblank <= hblank_reg;
 	vblank <= vblank_reg;
 	dotenable <= (not hblank_reg) and (not vblank_reg);
@@ -165,6 +169,7 @@ begin
 			line_reg    <= '0';
 			hsync_reg   <= '0';
 			vsync_reg   <= '0';
+			csync_reg   <= '0';
 			hblank_reg  <= '1';
 			vblank_reg  <= '1';
 
@@ -188,6 +193,12 @@ begin
 				hsync_reg <= '0';
 			end if;
 
+			if (hcount = H_TOTAL-1) then
+				csync_reg <= '1';
+			elsif ((vsync_reg = '0' and hcount = H_SYNC-1) or (vsync_reg = '1' and hcount = H_TOTAL-H_SYNC)) then
+				csync_reg <= '0';
+			end if;
+
 			if (hcount = H_SYNC + H_BACKP-1) then
 				hblank_reg <= '0';
 			elsif (hcount = H_SYNC + H_BACKP + H_ACTIVE-1) then
@@ -195,7 +206,6 @@ begin
 			end if;
 
 
---			if (hcount = H_SYNC + H_BACKP + H_ACTIVE-1) then
 			if (hcount = H_TOTAL-1) then
 				if (vcount = V_TOTAL-1) then
 					vcount <= 0;

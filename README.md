@@ -14,17 +14,20 @@ MISCモジュール集
 |dvi_encoder.vhd|[dvi_encoder](#dvi_encoder)|ビデオ信号をDVI/HDMI信号にエンコードする|
 |uart_module.v|[uart_phy_rxd](#uart_phy_rxd)|UARTを受信してAvalonST バイトデータとして出力する|
 ||[uart_phy_txd](#uart_phy_txd)|AvalonST バイトデータをUARTで送信する|
+|spdif_tx_24bit.vhd|[spdif_tx_24bit](#spdif_tx_24bit)|24bit/192kHz対応のS/PDIFエンコーダーモジュール|
+|adat_encoder.vhd|[adat_encoder](#adat_encoder)|24bit/48kHz×8ch出力対応のADATエンコーダーモジュール|
 
 ライセンス
 =========
 [The MIT License (MIT)](https://opensource.org/licenses/MIT)  
-Copyright (c) 2018 J-7SYSTEM WORKS LIMITED.
+Copyright (c) 2022 J-7SYSTEM WORKS LIMITED.
 
 
 使い方
 =====
 
 各HDLソースをプロジェクトに追加してモジュールをインスタンスしてください。
+
 
 -------------------------------------------------------------------------------
 div_module
@@ -34,7 +37,7 @@ div_module
 
 |generic|型|パラメータ|説明|
 |---|---|---|---|
-|DIVIDER_TYPE|string|"MULTICYCLE" or "PIPELINED"|割り算器の構成を選択します。|
+|DIVIDER_TYPE|string|"MULTICYCLE"<br>"PIPELINED"|割り算器の構成を選択します。|
 |DIVIDEND_BITWIDTH|integer|2～256|被除数のビット幅を指定します。|
 |DIVISOR_BITWIDTH|integer|2～DIVIDEND_BITWIDTH|除数のビット幅をDIVIDEND_BITWIDTH以下の範囲で指定します。|
 
@@ -159,6 +162,7 @@ vga_syncgen
 |pixelena|std_logic|output|scan_enaがアサートされていた場合、表示領域のドットの時に'1'を出力します。|
 |hsync|std_logic|output|水平同期期間に'1'を出力します。|
 |vsync|std_logic|output|垂直同期期間に'1'を出力します。|
+|csync|std_logic|output|複合同期期間に'1'を出力します。|
 |hblank|std_logic|output|水平ブランク期間に'1'を出力します。|
 |vblank|std_logic|output|垂直ブランク期間に'1'を出力します。|
 |dotenable|std_logic|output|ドットイネーブル期間に'1'を出力します。|
@@ -175,7 +179,7 @@ dvi_encoder
 
 |generic|型|パラメータ|説明|
 |---|---|---|---|
-|DEVICE_FAMILY|string|"Cyclone III" or "Cyclone IV E" or "Cyclone V" or "MAX 10"|実装するデバイスファミリを指定します。|
+|DEVICE_FAMILY|string|"Cyclone III"<br>"Cyclone IV E"<br>"Cyclone V"<br>"MAX 10"|実装するデバイスファミリを指定します。|
 
 |port|型|入出力|説明|
 |---|---|---|---|
@@ -248,3 +252,46 @@ uart_phy_txd
 |in_data|std_logic_vector|input|in_validに'1'が指示された場合にin_readyが'1'であれば8bitのバイトデータが取り込まれ、UART送信されます。|
 |txd|std_logic|output|UARTの信号出力です。|
 |cts|std_logic|input|フロー制御の通信可入力です。'1'のときにUART送信を実行します。フロー制御を使用しない場合は'1'に固定します。|
+
+
+-------------------------------------------------------------------------------
+spdif_tx_24bit
+------------
+
+- 24bitステレオオーディオデータをS/PDIF信号にエンコードします。
+
+|generic|型|パラメータ|説明|
+|---|---|---|---|
+|COPYRIGHTS|string|"ENABLE"(デフォルト)<br>"NONE"|コピーライト信号の有効、無効を設定します。|
+|CLOCK_ACCURACY|string|"STANDARD"(デフォルト)<br>"VARIABLE"<br>"HIQUALITY"|送信するクロックの精度情報を設定します。|
+|COPY_CONTROL|string|"NONE"(デフォルト)<br>"ONCE"<br>"LIMIT"|コピーコントロール情報を設定します。|
+|CATEGORY_CODE|std_logic_vector|"00000000"(デフォルト)|機器カテゴリーコードを設定します。|
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|clk|std_logic|input|クロックを入力です。サンプリングレートの128倍(128fs)以上の周波数を入力します。全ての信号は立ち上がりエッジで動作します。|
+|clk_ena|std_logic|input|クロックイネーブル信号入力です。'1'の時にクロックが有効になります。クロックが送信ビットレートよりも高速な場合、この信号で分周します。|
+|first_frame|std_logic|output|先頭サブフレーム送信の間'1'が出力されます。周期はfsと等しくなります。|
+|end_frame|std_logic|output|最終サブフレーム送信の間'1'が出力されます。周期はfsと等しくなります。|
+|freq_code|std_logic_vector|input|送信するフレームのサンプリング周波数情報をセットします。<br>0000 : 44.1kHz<br>0010 : 48kHz<br>0011 : 32kHz<br>1000 : 88.2kHz<br>1010 : 96kHz<br>1100 : 176.4kHz<br>1110 : 192kHz|
+|dlen_code|std_logic_vector|input|送信するフレームのサンプリングビット数情報をセットします。<br>0000 : 追加情報なし<br>0010 : 16bit<br>1010 : 20bit<br>1011 : 24bit|
+|pcmdata_l,<br>pcmdata_r|std_logic_vector|input|左/右チャネルのサンプリングデータを入力します。24bitソース以外では左詰（MSB詰め）で設定します。データラッチは各サブフレームの先頭で取り込まれるため、fs期間でデータを維持しなければなりません。|
+|spdif_out|std_logic|output|S/PDIFデータ出力です。|
+
+
+-------------------------------------------------------------------------------
+adat_encoder
+------------
+
+- 24bit、8chオーディオデータをADAT信号にエンコードします。
+
+|port|型|入出力|説明|
+|---|---|---|---|
+|reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
+|clk|std_logic|input|クロックを入力です。サンプリングレートの256倍(256fs)以上の周波数を入力します。全ての信号は立ち上がりエッジで動作します。|
+|clk_ena|std_logic|input|クロックイネーブル信号入力です。'1'の時にクロックが有効になります。クロックが送信ビットレートよりも高速な場合、この信号で分周します。|
+|ch0_data,<br>ch1_data,<br>ch2_data,<br>ch3_data,<br>ch4_data,<br>ch5_data,<br>ch6_data,<br>ch7_data|std_logic_vector|input|各チャネルのサンプリングデータを入力します。24bitソース以外では左詰（MSB詰め）で設定します。|
+|usercode|std_logic_vector|input|ユーザー追加情報（MIDI信号など）を入力します。|
+|sync_out|std_logic|output|chN_dataおよびusercodeを取り込むfs同期信号を出力します。データは'1'→'0'の変化と同時に取り込まれるため、fs期間中に保持しておく必要はありません。|
+|adat_tx|std_logic|output|ADATデータ出力です。|
