@@ -217,12 +217,13 @@ uart_phy_rxd
 |---|---|---|---|
 |CLOCK_FREQUENCY|integer|50000000(デフォルト)|clkポートに入力するクロック周波数を指定します。|
 |UART_BAUDRATE|integer|115200(デフォルト)|受信するUARTのボーレートを指定します。|
-|UART_STOPBIT|integer|1(デフォルト) or 2|UARTのストップビット長を指定します。|
+|UART_STOPBIT|integer|1(デフォルト)<br>2|UARTのストップビット長を指定します。|
 
 |port|型|入出力|説明|
 |---|---|---|---|
 |reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
-|clk|std_logic|input|クロックを入力です。全ての信号は立ち上がりエッジで動作します。|
+|clk|std_logic|input|クロック入力です。全ての信号は立ち上がりエッジで動作します。|
+|clk_ena|std_logic|input|クロックイネーブル入力です。'1'の時にクロックが有効になります。|
 |out_ready|std_logic|input|AvalonSTシンク側からの待機を指示します。out_readyが'0'の間はout_validのアサート状態を保持します。|
 |out_valid|std_logic|output|受信したバイトデータの有効信号が出力されます。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
 |out_data|std_logic_vector|output|受信した8bitのバイトデータが出力されます。out_validがアサートされた時、out_readyが'0'であれば'1'になるまで状態を保持します。|
@@ -246,7 +247,8 @@ uart_phy_txd
 |port|型|入出力|説明|
 |---|---|---|---|
 |reset|std_logic|input|非同期リセット入力です。'1'の期間中、リセットをアサートします。|
-|clk|std_logic|input|クロックを入力です。全ての信号は立ち上がりエッジで動作します。|
+|clk|std_logic|input|クロック入力です。全ての信号は立ち上がりエッジで動作します。|
+|clk_ena|std_logic|input|クロックイネーブル入力です。'1'の時にクロックが有効になります。|
 |in_ready|std_logic|output|モジュールの状態を返します。in_readyが'0'の時にin_validをアサートした場合は、in_readyが'1'になるまで入力の状態を保持しなければなりません。|
 |in_valid|std_logic|input|バイトデータ入力信号です。in_readyが'0'の時にin_validをアサートした場合は、in_readyが'1'になるまで入力の状態を保持しなければなりません。|
 |in_data|std_logic_vector|input|in_validに'1'が指示された場合にin_readyが'1'であれば8bitのバイトデータが取り込まれ、UART送信されます。|

@@ -6,6 +6,7 @@
 //
 //     UPDATE : 2020/04/02 module update (osafune@j7system.jp)
 //              2021/01/04 add RTS/CTS (osafune@j7system.jp)
+//              2022/02/17 add clk_ena signal (osafune@j7system.jp)
 // ===================================================================
 //
 // The MIT License (MIT)
@@ -43,8 +44,9 @@ module uart_phy_txd #(
 	parameter UART_STOPBIT		= 1
 ) (
 	// Interface: clk
-	input wire			clk,
 	input wire			reset,
+	input wire			clk,
+	input wire			clk_ena,	// 未使用時'1'にする 
 
 	// Interface: ST in
 	output wire			in_ready,
@@ -53,7 +55,7 @@ module uart_phy_txd #(
 
 	// interface UART
 	output wire			txd,
-	input wire			cts
+	input wire			cts			// フロー制御を使わない場合は'1'にする 
 );
 
 
@@ -63,7 +65,7 @@ module uart_phy_txd #(
 
 /* ----- 内部パラメータ ------------------ */
 
-	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BAUDRATE) - 1;
+	localparam CLOCK_DIVNUM = ((CLOCK_FREQUENCY + UART_BAUDRATE/2 - 1)/ UART_BAUDRATE) - 1;
 	localparam INIT_BITCOUNT = (UART_STOPBIT > 1)? 11 : 10;
 
 
@@ -102,26 +104,28 @@ module uart_phy_txd #(
 
 		end
 		else begin
-			ctsin_reg <= {ctsin_reg[0], cts};
+			if (clk_ena) begin
+				ctsin_reg <= {ctsin_reg[0], cts};
 
-			if (bitcount_reg == 4'd0) begin
-				if (in_valid && ctsin_reg[1]) begin
-					divcount_reg <= CLOCK_DIVNUM[11:0];
-					bitcount_reg <= INIT_BITCOUNT[3:0];
-					txd_reg <= {in_data, 1'b0};
-				end
-			end
-			else begin
-				if (divcount_reg == 0) begin
-					divcount_reg <= CLOCK_DIVNUM[11:0];
-					bitcount_reg <= bitcount_reg - 1'd1;
-					txd_reg <= {1'b1, txd_reg[8:1]};
+				if (bitcount_reg == 4'd0) begin
+					if (in_valid && ctsin_reg[1]) begin
+						divcount_reg <= CLOCK_DIVNUM[11:0];
+						bitcount_reg <= INIT_BITCOUNT[3:0];
+						txd_reg <= {in_data, 1'b0};
+					end
 				end
 				else begin
-					divcount_reg <= divcount_reg - 1'd1;
+					if (divcount_reg == 0) begin
+						divcount_reg <= CLOCK_DIVNUM[11:0];
+						bitcount_reg <= bitcount_reg - 1'd1;
+						txd_reg <= {1'b1, txd_reg[8:1]};
+					end
+					else begin
+						divcount_reg <= divcount_reg - 1'd1;
+					end
 				end
-			end
 
+			end
 		end
 	end
 
@@ -139,8 +143,9 @@ module uart_phy_rxd #(
 	parameter UART_STOPBIT		= 1
 ) (
 	// Interface: clk
-	input wire			clk,
 	input wire			reset,
+	input wire			clk,
+	input wire			clk_ena,		// 未使用時'1'にする 
 
 	// Interface: ST out
 	input wire			out_ready,
@@ -150,7 +155,7 @@ module uart_phy_rxd #(
 
 	// interface UART
 	input wire			rxd,
-	output wire			rts
+	output wire			rts				// フロー制御を使わない場合は開放にする 
 );
 
 
@@ -160,7 +165,7 @@ module uart_phy_rxd #(
 
 /* ----- 内部パラメータ ------------------ */
 
-	localparam CLOCK_DIVNUM = (CLOCK_FREQUENCY / UART_BAUDRATE) - 1;
+	localparam CLOCK_DIVNUM = ((CLOCK_FREQUENCY + UART_BAUDRATE/2 - 1)/ UART_BAUDRATE) - 1;
 	localparam BIT_CAPTURE  = (CLOCK_DIVNUM / 2);
 
 
@@ -207,59 +212,61 @@ module uart_phy_rxd #(
 
 		end
 		else begin
-			rxdin_reg <= {rxdin_reg[1:0], rxd};
-			rts_reg <= (!out_ready && outvalid_reg)? 1'b0 : 1'b1;
+			if (clk_ena) begin
+				rxdin_reg <= {rxdin_reg[1:0], rxd};
+				rts_reg <= (!out_ready && outvalid_reg)? 1'b0 : 1'b1;
 
-			if (out_ready && outvalid_reg) begin
-				overflow_reg <= 1'b0;
-				outvalid_reg <= 1'b0;
-			end
-			else if (divcount_reg == 0 && bitcount_reg == 4'd1 && rxdin_reg[2] == 1'b1) begin
-				overflow_reg <= outvalid_reg;
-				outvalid_reg <= 1'b1;
-			end
-
-
-			if (bitcount_reg == 4'd0) begin
-				if (rxdin_reg[2:1] == 2'b10) begin
-					divcount_reg <= BIT_CAPTURE[11:0];
-					bitcount_reg <= 4'd10;
+				if (out_ready && outvalid_reg) begin
+					overflow_reg <= 1'b0;
+					outvalid_reg <= 1'b0;
 				end
-			end
-			else begin
-				if (divcount_reg == 0) begin
-					divcount_reg <= CLOCK_DIVNUM[11:0];
+				else if (divcount_reg == 0 && bitcount_reg == 4'd1 && rxdin_reg[2] == 1'b1) begin
+					overflow_reg <= outvalid_reg;
+					outvalid_reg <= 1'b1;
+				end
 
-					if (bitcount_reg == 4'd10) begin			// start bit check
-						if (rxdin_reg[2] != 1'b0) begin
-							bitcount_reg <= 4'd0;
+
+				if (bitcount_reg == 4'd0) begin
+					if (rxdin_reg[2:1] == 2'b10) begin
+						divcount_reg <= BIT_CAPTURE[11:0];
+						bitcount_reg <= 4'd10;
+					end
+				end
+				else begin
+					if (divcount_reg == 0) begin
+						divcount_reg <= CLOCK_DIVNUM[11:0];
+
+						if (bitcount_reg == 4'd10) begin			// start bit check
+							if (rxdin_reg[2] != 1'b0) begin
+								bitcount_reg <= 4'd0;
+							end
+							else begin
+								bitcount_reg <= bitcount_reg - 1'd1;
+							end
+						end
+						else if (bitcount_reg == 4'd1) begin		// stop bit check
+							if (rxdin_reg[2] != 1'b1) begin
+								stoperror_reg <= 1'b1;
+							end
+							else begin
+								outdata_reg  <= shift_reg;
+								stoperror_reg <= 1'b0;
+							end
+
+							bitcount_reg <= bitcount_reg - 1'd1;
 						end
 						else begin
 							bitcount_reg <= bitcount_reg - 1'd1;
-						end
-					end
-					else if (bitcount_reg == 4'd1) begin		// stop bit check
-						if (rxdin_reg[2] != 1'b1) begin
-							stoperror_reg <= 1'b1;
-						end
-						else begin
-							outdata_reg  <= shift_reg;
-							stoperror_reg <= 1'b0;
+							shift_reg <= {rxdin_reg[2], shift_reg[7:1]};
 						end
 
-						bitcount_reg <= bitcount_reg - 1'd1;
 					end
 					else begin
-						bitcount_reg <= bitcount_reg - 1'd1;
-						shift_reg <= {rxdin_reg[2], shift_reg[7:1]};
+						divcount_reg <= divcount_reg - 1'd1;
 					end
+				end
 
-				end
-				else begin
-					divcount_reg <= divcount_reg - 1'd1;
-				end
 			end
-
 		end
 	end
 
