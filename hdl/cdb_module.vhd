@@ -4,6 +4,8 @@
 --     DESIGN : S.OSAFUNE (J-7SYSTEM WORKS LIMITED)
 --     DATE   : 2018/05/10 -> 2018/05/10
 --
+--     UPDATE : 2022/08/05 S.OSAFUNE
+--
 -- ===================================================================
 
 -- The MIT License (MIT)
@@ -129,7 +131,7 @@ begin
 
 	process (in_clk, in_rst) begin
 		if (in_rst = '1') then
-			inready_reg <= '1';
+			inready_reg <= '0';
 			in_dat_reg <= '0';
 			in_ack_reg <= "00";
 
@@ -144,7 +146,7 @@ begin
 			else
 				if (in_dat_reg = '1' and in_ack_reg(1) = '1') then
 					in_dat_reg <= '0';
-				elsif (in_dat_reg = '0' and in_ack_reg(0) = '0') then
+				elsif (in_dat_reg = '0' and in_ack_reg(1) = '0') then
 					inready_reg <= '1';
 				end if;
 			end if;
@@ -237,7 +239,7 @@ begin
 
 	process (in_clk, in_rst) begin
 		if (in_rst = '1') then
-			inready_reg <= '1';
+			inready_reg <= '0';
 			in_dat_reg <= '0';
 			in_ack_reg <= "00";
 
@@ -253,7 +255,7 @@ begin
 			else
 				if (in_dat_reg = '1' and in_ack_reg(1) = '1') then
 					in_dat_reg <= '0';
-				elsif (in_dat_reg = '0' and in_ack_reg(0) = '0') then
+				elsif (in_dat_reg = '0' and in_ack_reg(1) = '0') then
 					inready_reg <= '1';
 				end if;
 			end if;
