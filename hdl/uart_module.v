@@ -7,6 +7,7 @@
 //     UPDATE : 2020/04/02 module update (osafune@j7system.jp)
 //              2021/01/04 add RTS/CTS (osafune@j7system.jp)
 //              2022/02/17 add clk_ena signal (osafune@j7system.jp)
+//              2022/11/25 add uart_to_bytes (osafune@j7system.jp)
 // ===================================================================
 //
 // The MIT License (MIT)
@@ -145,17 +146,17 @@ module uart_phy_rxd #(
 	// Interface: clk
 	input wire			reset,
 	input wire			clk,
-	input wire			clk_ena,		// 未使用時'1'にする 
+	input wire			clk_ena,	// 未使用時'1'にする 
 
 	// Interface: ST out
 	input wire			out_ready,
 	output wire			out_valid,
 	output wire [7:0]	out_data,
-	output wire [1:0]	out_error,		// [0]:overflow, [1]:framing
+	output wire [1:0]	out_error,	// [0]:overflow, [1]:framing
 
 	// interface UART
 	input wire			rxd,
-	output wire			rts				// フロー制御を使わない場合は開放にする 
+	output wire			rts			// フロー制御を使わない場合は開放にする 
 );
 
 
@@ -274,5 +275,77 @@ module uart_phy_rxd #(
 	assign out_valid = outvalid_reg;
 	assign out_data  = outdata_reg;
 	assign out_error = {stoperror_reg, overflow_reg};
+
+endmodule
+
+
+
+// ===================================================================
+// UART to Avalon-ST Bytes stream input/output
+// ===================================================================
+
+module uart_to_bytes #(
+	parameter CLOCK_FREQUENCY	= 50000000,
+	parameter UART_BAUDRATE		= 115200,
+	parameter UART_STOPBIT		= 1
+) (
+	// Interface: clk
+	input wire			reset,
+	input wire			clk,
+
+	// Interface: ST in
+	output wire			in_ready,
+	input wire			in_valid,
+	input wire  [7:0]	in_data,
+
+	// Interface: ST out
+	input wire			out_ready,
+	output wire			out_valid,
+	output wire [7:0]	out_data,
+
+	// interface: coe UART
+	output wire			txd,
+	input wire			cts,		// フロー制御を使わない場合は'1'にする 
+	input wire			rxd,
+	output wire			rts			// フロー制御を使わない場合は開放にする 
+);
+
+
+/* ===== モジュール構造記述 ============== */
+
+	uart_phy_txd #(
+		.CLOCK_FREQUENCY	(CLOCK_FREQUENCY),
+		.UART_BAUDRATE		(UART_BAUDRATE),
+		.UART_STOPBIT		(UART_STOPBIT)
+	)
+	u_txd (
+		.reset		(reset),
+		.clk		(clk),
+		.clk_ena	(1'b1),
+		.in_ready	(in_ready),
+		.in_valid	(in_valid),
+		.in_data	(in_data),
+		.txd		(txd),
+		.cts		(cts)
+	);
+
+	uart_phy_rxd #(
+		.CLOCK_FREQUENCY	(CLOCK_FREQUENCY),
+		.UART_BAUDRATE		(UART_BAUDRATE),
+		.UART_STOPBIT		(UART_STOPBIT)
+	)
+	u_rxd (
+		.reset		(reset),
+		.clk		(clk),
+		.clk_ena	(1'b1),
+		.out_ready	(out_ready),
+		.out_valid	(out_valid),
+		.out_data	(out_data),
+		.out_error	(),
+		.rxd		(rxd),
+		.rts		(rts)
+	);
+
+
 
 endmodule
