@@ -262,10 +262,10 @@ uart_phy_rxd
 uart_to_bytes
 -------------
 
-- AvalonSTバイトストリームとUARTの変換を行います。uart_phy_rxdおよびuart_phy_txdのインスタンスを行ったモジュールです。
-
+- AvalonSTバイトストリームとUARTの変換を行います。uart_phy_rxdおよびuart_phy_txdのインスタンスを行ったモジュールです。  
 このモジュールは同梱のuart_to_bytes_hw.tclと同フォルダに格納してPlatform Designer上からインスタンスします。  
 Platform Designer上から変更できるパラメータは以下の通りです。
+
 |generic|型|パラメータ|説明|
 |UART_BAUDRATE|integer|115200(デフォルト)|送信するUARTのボーレートを指定します。|
 |UART_STOPBIT|integer|1(デフォルト) or 2|UARTのストップビット長を指定します。|
